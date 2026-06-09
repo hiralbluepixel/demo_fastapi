@@ -6,7 +6,6 @@ data={}
 @app.get("/users")
 def get_user():
     return data
-    # return {"message": "User not found"}
 
 @app.post("/users")
 def create_user(name: str, age: int):
