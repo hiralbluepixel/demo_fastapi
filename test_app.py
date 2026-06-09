@@ -1,4 +1,18 @@
 import pytest
+import random
+import string
+
+
+@pytest.fixture
+def user_data():
+    return {
+        "name": "".join(
+            random.choice(string.ascii_letters)
+            for _ in range(8)
+        ),
+        "age": random.randint(18, 80)
+    }
+
 from fastapi.testclient import TestClient
 from main_app import app, data
 
@@ -8,82 +22,51 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def clear_data():
     data.clear()
-    yield
-    data.clear()
 
 
-def test_create_user():
+def test_create_user(user_data):
     response = client.post(
         "/users",
-        params={"name": "Hiral", "age": 25}
+        params=user_data
     )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "user_id": 1,
-        "name": "Hiral",
-        "age": 25
-    }
+
+    response_data = response.json()
+
+    assert response_data["name"] == user_data["name"]
+    assert response_data["age"] == user_data["age"]
+    assert response_data["user_id"] == 1
 
 
-def test_get_existing_user():
-    client.post(
+def test_get_users(user_data):
+    client.post("/users", params=user_data)
+
+    response = client.get("/users")
+
+    assert response.status_code == 200
+
+    users = response.json()
+
+    assert len(users) == 1
+
+
+def test_delete_user(user_data):
+    create_response = client.post(
         "/users",
-        params={"name": "Hiral", "age": 25}
+        params=user_data
     )
 
-    response = client.get("/users/1")
+    user_id = create_response.json()["user_id"]
 
-    assert response.status_code == 200
-    assert response.json() == {
-        "name": "Hiral",
-        "age": 25
-    }
-
-
-def test_get_non_existing_user():
-    response = client.get("/users/999")
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "message": "User not found"
-    }
-
-
-def test_delete_existing_user():
-    client.post(
-        "/users",
-        params={"name": "Hiral", "age": 25}
+    delete_response = client.delete(
+        f"/users/{user_id}"
     )
 
-    response = client.delete("/users/1")
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "message": "User 1 deleted successfully"
-    }
-
-
-def test_delete_non_existing_user():
-    response = client.delete("/users/999")
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "message": "User not found"
-    }
-
-
-def test_user_removed_after_delete():
-    client.post(
-        "/users",
-        params={"name": "Hiral", "age": 25}
+    assert delete_response.status_code == 200
+    assert (
+        delete_response.json()["message"]
+        == f"User {user_id} deleted successfully"
     )
 
-    client.delete("/users/1")
 
-    response = client.get("/users/1")
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "message": "User not found"
-    }

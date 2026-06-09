@@ -7,6 +7,7 @@ data={}
 def get_user():
     return data
 
+
 @app.post("/users")
 def create_user(name: str, age: int):
     user_id = len(data) + 1
@@ -16,6 +17,7 @@ def create_user(name: str, age: int):
         "name": name,
         "age": age
     }
+
 
 @app.delete("/users/{user_id}")
 def delete_user(user_id: int):
